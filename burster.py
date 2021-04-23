@@ -139,6 +139,51 @@ def update_temp_tables(config,row,perc):
 			con.close()
 
 
+def one_off_groups(config):
+	raddb_creds = dict(config.items("raddb"))
+	main_config = dict(config.items("main"))
+	try:
+		con = mdb.connect(host=raddb_creds["host"],database=raddb_creds["db"],user=raddb_creds["user"],password=raddb_creds["pass"]);
+		cur = con.cursor()
+		cur.execute("""INSERT into radgroupcheck_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(groupname="websafe",attribute="Auth-Type",radop=":=",radvalue="Local"))
+		cur.execute("""INSERT into radgroupcheck_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(groupname="nowebsafe",attribute="Auth-Type",radop=":=",radvalue="Local"))
+		cur.execute("""INSERT into radgroupcheck_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(groupname="cpe",attribute="Auth-Type",radop=":=",radvalue="Local"))
+		cur.execute("""INSERT into radgroupcheck_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(groupname="tech",attribute="Auth-Type",radop=":=",radvalue="Local"))
+
+		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(groupname="websafe",attribute="Fall-Through",radop=":=",radvalue="Yes"))
+		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(groupname="nowebsafe",attribute="Fall-Through",radop=":=",radvalue="Yes"))
+		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(groupname="nowebsafe",attribute="Mikrotik-Address-List",radop=":=",radvalue="nws"))
+
+		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(groupname="unauth",attribute="Mikrotik-Address-List",radop=":=",radvalue="unauth"))
+
+		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(groupname="unlim",attribute="Fall-Through",radop=":=",radvalue="Yes"))
+
+		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(groupname="tech",attribute="Fall-Through",radop=":=",radvalue="Yes"))
+		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(groupname="tech",attribute="Framed-Pool",radop=":=",radvalue="cust"))
+		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(groupname="tech",attribute="Mikrotik-Address-List",radop=":=",radvalue="nws"))
+		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(groupname="tech",attribute="Session-Timeout",radop=":=",radvalue="3600"))
+
+		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(groupname="cpe",attribute="Fall-Through",radop=":=",radvalue="Yes"))
+		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(groupname="cpe",attribute="Framed-Pool",radop=":=",radvalue="cpe"))
+		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(groupname="cpe",attribute="Session-Timeout",radop=":=",radvalue="3600"))
+
+		#websafe
+		#nowebsafe
+		#unauth
+		#cpe
+		#unlim
+		#tech
+		#LAB
+
+		con.commit()
+	except mdb.Error, e:
+		print "Error %d: %s" % (e.args[0],e.args[1])
+		sys.exit(1)
+	finally:
+		if con:
+			con.commit()
+			con.close()
+
 
 def main():
 	rowdictlist = []
@@ -155,6 +200,7 @@ def main():
 	create_temp_tables(config)
 	for row in rowdictlist:
 		update_temp_tables(config,row,perc)
+	one_off_groups(config)
 	swap_temp_tables(config)
 	# raddb_config = dict(config.items("raddb"))
 	# main_config = dict(config.items("main"))
