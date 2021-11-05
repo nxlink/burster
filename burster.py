@@ -129,8 +129,8 @@ def update_temp_tables(config,row,perc):
 		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(groupname=row['PLAN'],attribute="Session-Timeout",radop=":=",radvalue=main_config["session_timeout"]))
 		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(groupname=row['PLAN'],attribute="Framed-Pool",radop=":=",radvalue=main_config["framed_pool"]))
 		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(groupname=row['PLAN'],attribute="Mikrotik-Rate-Limit",radop=":=",radvalue=mt_rate_limit_str))
-		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{groupname}');""".format(groupname=row['PLAN'],attribute="Alc-Subsc-Prof-Str")
-		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(groupname=row['PLAN'],attribute="Alc-SLA-Prof-Str")
+		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{groupname}');""".format(groupname=row['PLAN'],attribute="Alc-Subsc-Prof-Str",radop=":="))
+		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{groupname}');""".format(groupname=row['PLAN'],attribute="Alc-SLA-Prof-Str",radop=":="))
 
 		
 		con.commit()
