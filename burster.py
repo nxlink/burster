@@ -177,8 +177,8 @@ def one_off_groups(config):
 		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(groupname="7750-QOS-TEST",attribute="Mikrotik-Rate-Limit",radop=":=",radvalue="10000k/10000k"))
 		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{groupname}');""".format(groupname="7750-QOS-TEST",attribute="Alc-Subsc-Prof-Str",radop=":="))
 		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{groupname}');""".format(groupname="7750-QOS-TEST",attribute="Alc-SLA-Prof-Str",radop=":="))
-		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(groupname="7750-QOS-TEST",attribute="Alc-Subscriber-QoS-Override",radop=":=",radvalue="e:q:1:pir=3000,cir=3000"))
-		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(groupname="7750-QOS-TEST",attribute="Alc-Subscriber-QoS-Override",radop=":=",radvalue="i:q:1:pir=1000,cir=1000"))
+		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(groupname="7750-QOS-TEST",attribute="Alc-Subscriber-QoS-Override",radop="+=",radvalue="e:q:1:pir=3000,cir=3000"))
+		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(groupname="7750-QOS-TEST",attribute="Alc-Subscriber-QoS-Override",radop="+=",radvalue="i:q:1:pir=1000,cir=1000"))
 
 
 		#websafe
