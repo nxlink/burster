@@ -121,7 +121,8 @@ def update_temp_tables(config,row,perc):
 	raddb_creds = dict(config.items("raddb"))
 	main_config = dict(config.items("main"))
 	mt_rate_limit_str = CalcMTRateLimit(row,perc,main_config)
-
+	ne_ul = str(row['UL'] * 1000000 * (1 + (float(main_config["boost_perc"]) / 100)))
+	ne_dl = str(row['DL'] * 1000000 * (1 + (float(main_config["boost_perc"]) / 100)))
 	try:
 		con = mdb.connect(host=raddb_creds["host"],database=raddb_creds["db"],user=raddb_creds["user"],password=raddb_creds["pass"]);
 		cur = con.cursor()
@@ -131,6 +132,9 @@ def update_temp_tables(config,row,perc):
 		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(groupname=row['PLAN'],attribute="Mikrotik-Rate-Limit",radop=":=",radvalue=mt_rate_limit_str))
 		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{groupname}');""".format(groupname=row['PLAN'],attribute="Alc-Subsc-Prof-Str",radop=":="))
 		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{groupname}');""".format(groupname=row['PLAN'],attribute="Alc-SLA-Prof-Str",radop=":="))
+		#cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{ne_ul}');""".format(groupname=row['PLAN'],attribute="NetElastic-Input-Average-Rate",radop=":=",ne_ul=ne_ul))
+		#cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{ne_dl}');""".format(groupname=row['PLAN'],attribute="NetElastic-Output-Average-Rate",radop=":=",ne_dl=ne_dl))
+		#cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','30');""".format(groupname=row['PLAN'],attribute="NetElastic-Lease-Time",radop=":="))
 
 		
 		con.commit()
