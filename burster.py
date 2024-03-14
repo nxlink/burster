@@ -134,7 +134,7 @@ def update_temp_tables(config,row,perc):
 		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{groupname}');""".format(groupname=row['PLAN'],attribute="Alc-SLA-Prof-Str",radop=":="))
 		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{ne_ul}');""".format(groupname=row['PLAN'],attribute="NetElastic-Input-Average-Rate",radop=":=",ne_ul=ne_ul))
 		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{ne_dl}');""".format(groupname=row['PLAN'],attribute="NetElastic-Output-Average-Rate",radop=":=",ne_dl=ne_dl))
-		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','30');""".format(groupname=row['PLAN'],attribute="NetElastic-Lease-Time",radop=":="))
+		cur.execute("""INSERT into radgroupreply_tmp (groupname,attribute,op,value) VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(groupname=row['PLAN'],attribute="NetElastic-Lease-Time",radop=":=",radvalue=main_config["session_timeout"]))
 
 		
 		con.commit()
