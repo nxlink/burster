@@ -7,7 +7,7 @@ import sys
 import logging
 import logging.handlers
 import configparser
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
 
 from dotenv import load_dotenv
 from tqdm import tqdm
@@ -15,6 +15,7 @@ import pymysql
 
 pymysql.install_as_MySQLdb()
 import MySQLdb as mdb
+import pandas as pd
 
 
 load_dotenv()
@@ -244,9 +245,9 @@ def swap_temp_tables(config: configparser.RawConfigParser) -> None:
             con.commit()
             con.close()
 
-def update_temp_tables(config: configparser.RawConfigParser, row: Dict[str, Any], perc: int) -> None:
-    raddb_creds = get_raddb_creds(config)
-    main_config = get_main_config(config)
+def build_plan_attribute_rows(
+    row: Dict[str, Any], perc: int, main_config: Dict[str, Any]
+) -> Tuple[List[Dict[str, str]], List[Dict[str, str]]]:
     mt_rate_limit_str = calc_mt_rate_limit(row, perc, main_config)
     ne_ul = str(
         int(float(row["UL"]) * 1_000_000 * (1 + (float(main_config["boost_perc"]) / 100)))
@@ -254,93 +255,239 @@ def update_temp_tables(config: configparser.RawConfigParser, row: Dict[str, Any]
     ne_dl = str(
         int(float(row["DL"]) * 1_000_000 * (1 + (float(main_config["boost_perc"]) / 100)))
     )
-    con = None
-    try:
-        con = mdb.connect(
-            host=raddb_creds["host"],
-            db=raddb_creds["db"],
-            user=raddb_creds["user"],
-            password=raddb_creds["pass"],
-        )
-        cur = con.cursor()
-        cur.execute(
-            """INSERT INTO radgroupcheck_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(
-                groupname=row["PLAN"], attribute="Auth-Type", radop=":=", radvalue="Local"
-            )
-        )
-        cur.execute(
-            """INSERT INTO radgroupreply_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(
-                groupname=row["PLAN"],
-                attribute="Session-Timeout",
-                radop=":=",
-                radvalue=main_config["session_timeout"],
-            )
-        )
-        cur.execute(
-            """INSERT INTO radgroupreply_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(
-                groupname=row["PLAN"],
-                attribute="Framed-Pool",
-                radop=":=",
-                radvalue=main_config["framed_pool"],
-            )
-        )
-        # cur.execute("""INSERT INTO radgroupreply_tmp (...) Mikrotik-Rate-Limit ... """)
-        cur.execute(
-            """INSERT INTO radgroupreply_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{groupname}');""".format(
-                groupname=row["PLAN"], attribute="Alc-Subsc-Prof-Str", radop=":="
-            )
-        )
-        cur.execute(
-            """INSERT INTO radgroupreply_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{groupname}');""".format(
-                groupname=row["PLAN"], attribute="Alc-SLA-Prof-Str", radop=":="
-            )
-        )
-        cur.execute(
-            """INSERT INTO radgroupreply_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{ne_ul}');""".format(
-                groupname=row["PLAN"],
-                attribute="NetElastic-Input-Average-Rate",
-                radop=":=",
-                ne_ul=ne_ul,
-            )
-        )
-        cur.execute(
-            """INSERT INTO radgroupreply_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{ne_dl}');""".format(
-                groupname=row["PLAN"],
-                attribute="NetElastic-Output-Average-Rate",
-                radop=":=",
-                ne_dl=ne_dl,
-            )
-        )
-        cur.execute(
-            """INSERT INTO radgroupreply_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(
-                groupname=row["PLAN"],
-                attribute="NetElastic-Lease-Time",
-                radop=":=",
-                radvalue=main_config["session_timeout"],
-            )
-        )
 
-        con.commit()
-    except mdb.Error as e:
-        print("Error: {}".format(e))
-        sys.exit(1)
-    finally:
-        if con:
-            con.commit()
-            con.close()
+    radgroupcheck_rows = [
+        {
+            "groupname": row["PLAN"],
+            "attribute": "Auth-Type",
+            "op": ":=",
+            "value": "Local",
+        }
+    ]
+
+    radgroupreply_rows = [
+        {
+            "groupname": row["PLAN"],
+            "attribute": "Session-Timeout",
+            "op": ":=",
+            "value": str(main_config["session_timeout"]),
+        },
+        {
+            "groupname": row["PLAN"],
+            "attribute": "Framed-Pool",
+            "op": ":=",
+            "value": str(main_config["framed_pool"]),
+        },
+        {
+            "groupname": row["PLAN"],
+            "attribute": "Mikrotik-Rate-Limit",
+            "op": ":=",
+            "value": mt_rate_limit_str,
+        },
+        {
+            "groupname": row["PLAN"],
+            "attribute": "Alc-Subsc-Prof-Str",
+            "op": ":=",
+            "value": row["PLAN"],
+        },
+        {
+            "groupname": row["PLAN"],
+            "attribute": "Alc-SLA-Prof-Str",
+            "op": ":=",
+            "value": row["PLAN"],
+        },
+        {
+            "groupname": row["PLAN"],
+            "attribute": "NetElastic-Input-Average-Rate",
+            "op": ":=",
+            "value": ne_ul,
+        },
+        {
+            "groupname": row["PLAN"],
+            "attribute": "NetElastic-Output-Average-Rate",
+            "op": ":=",
+            "value": ne_dl,
+        },
+        {
+            "groupname": row["PLAN"],
+            "attribute": "NetElastic-Lease-Time",
+            "op": ":=",
+            "value": str(main_config["session_timeout"]),
+        },
+    ]
+
+    return radgroupcheck_rows, radgroupreply_rows
 
 
-def one_off_groups(config: configparser.RawConfigParser) -> None:
+def append_one_off_groups(
+    radgroupcheck_rows: List[Dict[str, str]],
+    radgroupreply_rows: List[Dict[str, str]],
+) -> None:
+    radgroupcheck_rows.extend(
+        [
+            {"groupname": "websafe", "attribute": "Auth-Type", "op": ":=", "value": "Local"},
+            {"groupname": "nowebsafe", "attribute": "Auth-Type", "op": ":=", "value": "Local"},
+            {"groupname": "cpe", "attribute": "Auth-Type", "op": ":=", "value": "Local"},
+            {"groupname": "tech", "attribute": "Auth-Type", "op": ":=", "value": "Local"},
+            {
+                "groupname": "7750-QOS-TEST",
+                "attribute": "Auth-Type",
+                "op": ":=",
+                "value": "Local",
+            },
+        ]
+    )
+
+    radgroupreply_rows.extend(
+        [
+            {
+                "groupname": "websafe",
+                "attribute": "Fall-Through",
+                "op": ":=",
+                "value": "Yes",
+            },
+            {
+                "groupname": "nowebsafe",
+                "attribute": "Fall-Through",
+                "op": ":=",
+                "value": "Yes",
+            },
+            {
+                "groupname": "nowebsafe",
+                "attribute": "Mikrotik-Address-List",
+                "op": ":=",
+                "value": "nws",
+            },
+            {
+                "groupname": "unauth",
+                "attribute": "Mikrotik-Address-List",
+                "op": ":=",
+                "value": "unauth",
+            },
+            {
+                "groupname": "unauth",
+                "attribute": "Filter-Id",
+                "op": ":=",
+                "value": "unauth-acl-profile",
+            },
+            {
+                "groupname": "unauth",
+                "attribute": "NetElastic-Portal-Mode",
+                "op": ":=",
+                "value": "1",
+            },
+            {
+                "groupname": "unauth",
+                "attribute": "NetElastic-HTTP-Redirect-URL",
+                "op": ":=",
+                "value": "http://captive.nxlink.com",
+            },
+            {
+                "groupname": "unlim",
+                "attribute": "Fall-Through",
+                "op": ":=",
+                "value": "Yes",
+            },
+            {
+                "groupname": "tech",
+                "attribute": "Fall-Through",
+                "op": ":=",
+                "value": "Yes",
+            },
+            {
+                "groupname": "tech",
+                "attribute": "Framed-Pool",
+                "op": ":=",
+                "value": "cust",
+            },
+            {
+                "groupname": "tech",
+                "attribute": "Mikrotik-Address-List",
+                "op": ":=",
+                "value": "nws",
+            },
+            {
+                "groupname": "tech",
+                "attribute": "Session-Timeout",
+                "op": ":=",
+                "value": "3600",
+            },
+            {
+                "groupname": "cpe",
+                "attribute": "Fall-Through",
+                "op": ":=",
+                "value": "Yes",
+            },
+            {
+                "groupname": "cpe",
+                "attribute": "Framed-Pool",
+                "op": ":=",
+                "value": "cpe",
+            },
+            {
+                "groupname": "cpe",
+                "attribute": "Session-Timeout",
+                "op": ":=",
+                "value": "3600",
+            },
+            {
+                "groupname": "7750-QOS-TEST",
+                "attribute": "Session-Timeout",
+                "op": ":=",
+                "value": "3600",
+            },
+            {
+                "groupname": "7750-QOS-TEST",
+                "attribute": "Framed-Pool",
+                "op": ":=",
+                "value": "cust",
+            },
+            {
+                "groupname": "7750-QOS-TEST",
+                "attribute": "Alc-Subsc-Prof-Str",
+                "op": ":=",
+                "value": "7750-QOS-TEST",
+            },
+            {
+                "groupname": "7750-QOS-TEST",
+                "attribute": "Alc-SLA-Prof-Str",
+                "op": ":=",
+                "value": "7750-QOS-TEST",
+            },
+            {
+                "groupname": "7750-QOS-TEST",
+                "attribute": "Alc-Subscriber-QoS-Override",
+                "op": "+=",
+                "value": "e:q:1:pir=3000,cir=3000",
+            },
+            {
+                "groupname": "7750-QOS-TEST",
+                "attribute": "Alc-Subscriber-QoS-Override",
+                "op": "+=",
+                "value": "i:q:1:pir=1000,cir=1000",
+            },
+        ]
+    )
+
+    # Ensure unauth group exists even without accompanying check rows
+    if not any(row["groupname"] == "unauth" for row in radgroupcheck_rows):
+        radgroupcheck_rows.append(
+            {
+                "groupname": "unauth",
+                "attribute": "Auth-Type",
+                "op": ":=",
+                "value": "Local",
+            }
+        )
+
+
+def bulk_insert_dataframe(
+    config: configparser.RawConfigParser, table_name: str, dataframe: pd.DataFrame
+) -> None:
+    if dataframe.empty:
+        return
+
     raddb_creds = get_raddb_creds(config)
-    main_config = get_main_config(config)
     con = None
     try:
         con = mdb.connect(
@@ -350,187 +497,15 @@ def one_off_groups(config: configparser.RawConfigParser) -> None:
             password=raddb_creds["pass"],
         )
         cur = con.cursor()
-        cur.execute(
-            """INSERT INTO radgroupcheck_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(
-                groupname="websafe", attribute="Auth-Type", radop=":=", radvalue="Local"
-            )
+        columns = ["groupname", "attribute", "op", "value"]
+        rows = [
+            tuple(str(value) for value in record)
+            for record in dataframe[columns].itertuples(index=False, name=None)
+        ]
+        cur.executemany(
+            f"INSERT INTO {table_name} (groupname, attribute, op, value) VALUES (%s, %s, %s, %s);",
+            rows,
         )
-        cur.execute(
-            """INSERT INTO radgroupcheck_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(
-                groupname="nowebsafe",
-                attribute="Auth-Type",
-                radop=":=",
-                radvalue="Local",
-            )
-        )
-        cur.execute(
-            """INSERT INTO radgroupcheck_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(
-                groupname="cpe", attribute="Auth-Type", radop=":=", radvalue="Local"
-            )
-        )
-        cur.execute(
-            """INSERT INTO radgroupcheck_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(
-                groupname="tech", attribute="Auth-Type", radop=":=", radvalue="Local"
-            )
-        )
-
-        cur.execute(
-            """INSERT INTO radgroupreply_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(
-                groupname="websafe", attribute="Fall-Through", radop=":=", radvalue="Yes"
-            )
-        )
-        cur.execute(
-            """INSERT INTO radgroupreply_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(
-                groupname="nowebsafe",
-                attribute="Fall-Through",
-                radop=":=",
-                radvalue="Yes",
-            )
-        )
-        cur.execute(
-            """INSERT INTO radgroupreply_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(
-                groupname="nowebsafe",
-                attribute="Mikrotik-Address-List",
-                radop=":=",
-                radvalue="nws",
-            )
-        )
-
-        cur.execute(
-            """INSERT INTO radgroupreply_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(
-                groupname="unauth",
-                attribute="Mikrotik-Address-List",
-                radop=":=",
-                radvalue="unauth",
-            )
-        )
-
-        cur.execute(
-            """INSERT INTO radgroupreply_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(
-                groupname="unlim", attribute="Fall-Through", radop=":=", radvalue="Yes"
-            )
-        )
-
-        cur.execute(
-            """INSERT INTO radgroupreply_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(
-                groupname="tech", attribute="Fall-Through", radop=":=", radvalue="Yes"
-            )
-        )
-        cur.execute(
-            """INSERT INTO radgroupreply_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(
-                groupname="tech", attribute="Framed-Pool", radop=":=", radvalue="cust"
-            )
-        )
-        cur.execute(
-            """INSERT INTO radgroupreply_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(
-                groupname="tech",
-                attribute="Mikrotik-Address-List",
-                radop=":=",
-                radvalue="nws",
-            )
-        )
-        cur.execute(
-            """INSERT INTO radgroupreply_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(
-                groupname="tech", attribute="Session-Timeout", radop=":=", radvalue="3600"
-            )
-        )
-
-        cur.execute(
-            """INSERT INTO radgroupreply_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(
-                groupname="cpe", attribute="Fall-Through", radop=":=", radvalue="Yes"
-            )
-        )
-        cur.execute(
-            """INSERT INTO radgroupreply_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(
-                groupname="cpe", attribute="Framed-Pool", radop=":=", radvalue="cpe"
-            )
-        )
-        cur.execute(
-            """INSERT INTO radgroupreply_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(
-                groupname="cpe", attribute="Session-Timeout", radop=":=", radvalue="3600"
-            )
-        )
-
-        cur.execute(
-            """INSERT INTO radgroupcheck_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(
-                groupname="7750-QOS-TEST",
-                attribute="Auth-Type",
-                radop=":=",
-                radvalue="Local",
-            )
-        )
-        cur.execute(
-            """INSERT INTO radgroupreply_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(
-                groupname="7750-QOS-TEST",
-                attribute="Session-Timeout",
-                radop=":=",
-                radvalue="3600",
-            )
-        )
-        cur.execute(
-            """INSERT INTO radgroupreply_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(
-                groupname="7750-QOS-TEST",
-                attribute="Framed-Pool",
-                radop=":=",
-                radvalue="cust",
-            )
-        )
-        # cur.execute("""INSERT INTO radgroupreply_tmp (...) Mikrotik-Rate-Limit ... """)
-        cur.execute(
-            """INSERT INTO radgroupreply_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{groupname}');""".format(
-                groupname="7750-QOS-TEST",
-                attribute="Alc-Subsc-Prof-Str",
-                radop=":=",
-            )
-        )
-        cur.execute(
-            """INSERT INTO radgroupreply_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{groupname}');""".format(
-                groupname="7750-QOS-TEST",
-                attribute="Alc-SLA-Prof-Str",
-                radop=":=",
-            )
-        )
-        cur.execute(
-            """INSERT INTO radgroupreply_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(
-                groupname="7750-QOS-TEST",
-                attribute="Alc-Subscriber-QoS-Override",
-                radop="+=",
-                radvalue="e:q:1:pir=3000,cir=3000",
-            )
-        )
-        cur.execute(
-            """INSERT INTO radgroupreply_tmp (groupname,attribute,op,value)
-            VALUES ('{groupname}','{attribute}','{radop}','{radvalue}');""".format(
-                groupname="7750-QOS-TEST",
-                attribute="Alc-Subscriber-QoS-Override",
-                radop="+=",
-                radvalue="i:q:1:pir=1000,cir=1000",
-            )
-        )
-
-        # websafe, nowebsafe, unauth, cpe, unlim, tech, LAB presets added above
         con.commit()
     except mdb.Error as e:
         print("Error: {}".format(e))
@@ -604,17 +579,34 @@ def main() -> None:
     logger.info("Creating temporary tables")
     create_temp_tables(config)
 
-    logger.info("Updating temp tables for %d plans (percent=%d)", total, perc)
+    main_config = get_main_config(config)
+    radgroupcheck_rows: List[Dict[str, str]] = []
+    radgroupreply_rows: List[Dict[str, str]] = []
+
+    logger.info("Building attribute dataframes for %d plans (percent=%d)", total, perc)
     log_interval = max(1, total // 10)  # 10% intervals
     with tqdm(total=total, desc="Processing plans", unit="plan") as pbar:
         for idx, row in enumerate(rows, 1):
-            update_temp_tables(config, row, perc)
+            plan_check_rows, plan_reply_rows = build_plan_attribute_rows(row, perc, main_config)
+            radgroupcheck_rows.extend(plan_check_rows)
+            radgroupreply_rows.extend(plan_reply_rows)
             pbar.update(1)
             if idx % log_interval == 0 or idx == total:
                 logger.info("Progress: %d/%d (%.0f%%)", idx, total, (idx / total) * 100)
 
-    logger.info("Adding one-off groups")
-    one_off_groups(config)
+    logger.info("Appending one-off groups")
+    append_one_off_groups(radgroupcheck_rows, radgroupreply_rows)
+
+    radgroupcheck_df = pd.DataFrame(radgroupcheck_rows, columns=["groupname", "attribute", "op", "value"])
+    radgroupreply_df = pd.DataFrame(radgroupreply_rows, columns=["groupname", "attribute", "op", "value"])
+
+    logger.info(
+        "Inserting %d radgroupcheck rows and %d radgroupreply rows",
+        len(radgroupcheck_df),
+        len(radgroupreply_df),
+    )
+    bulk_insert_dataframe(config, "radgroupcheck_tmp", radgroupcheck_df)
+    bulk_insert_dataframe(config, "radgroupreply_tmp", radgroupreply_df)
 
     logger.info("Swapping temp tables into place")
     swap_temp_tables(config)
