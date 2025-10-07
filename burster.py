@@ -380,7 +380,7 @@ def append_one_off_groups(
                 "groupname": "unauth",
                 "attribute": "NetElastic-HTTP-Redirect-URL",
                 "op": ":=",
-                "value": "http://captive.nxlink.com",
+                "value": "http://captive-new.nxlink.com",
             },
             {
                 "groupname": "unlim",
