@@ -278,12 +278,12 @@ def build_plan_attribute_rows(
             "op": ":=",
             "value": str(main_config["framed_pool"]),
         },
-        {
-            "groupname": row["PLAN"],
-            "attribute": "Mikrotik-Rate-Limit",
-            "op": ":=",
-            "value": mt_rate_limit_str,
-        },
+        # {
+        #     "groupname": row["PLAN"],
+        #     "attribute": "Mikrotik-Rate-Limit",
+        #     "op": ":=",
+        #     "value": mt_rate_limit_str,
+        # },
         {
             "groupname": row["PLAN"],
             "attribute": "Alc-Subsc-Prof-Str",
