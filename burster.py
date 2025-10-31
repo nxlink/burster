@@ -314,6 +314,18 @@ def build_plan_attribute_rows(
             "op": ":=",
             "value": str(main_config["session_timeout"]),
         },
+        {
+            "groupname": row["PLAN"],
+            "attribute": "Filter-Id",
+            "op": ":=",
+            "value": "cst-acl-profile",
+        },
+        {
+            "groupname": row["PLAN"],
+            "attribute": "NetElastic-Portal-Mode",
+            "op": ":=",
+            "value": "0",
+        },
     ]
 
     return radgroupcheck_rows, radgroupreply_rows
