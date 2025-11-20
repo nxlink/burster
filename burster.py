@@ -255,6 +255,12 @@ def build_plan_attribute_rows(
     ne_dl = str(
         int(float(row["DL"]) * 1_000_000 * (1 + (float(main_config["boost_perc"]) / 100)))
     )
+    cambium_ul = str(
+        int(float(row["UL"]) * 1000 * (1 + (float(main_config["boost_perc"]) / 100)))
+    )
+    cambium_dl = str(
+        int(float(row["DL"]) * 1000 * (1 + (float(main_config["boost_perc"]) / 100)))
+    )
 
     radgroupcheck_rows = [
         {
@@ -307,6 +313,18 @@ def build_plan_attribute_rows(
             "attribute": "NetElastic-Output-Average-Rate",
             "op": ":=",
             "value": ne_dl,
+        },
+        {
+            "groupname": row["PLAN"],
+            "attribute": "Cambium-ePMP-Max-Burst-Uplink-Rate",
+            "op": ":=",
+            "value": cambium_ul,
+        },
+        {
+            "groupname": row["PLAN"],
+            "attribute": "Cambium-ePMP-Max-Burst-Downlink-Rate",
+            "op": ":=",
+            "value": cambium_dl,
         },
         {
             "groupname": row["PLAN"],
