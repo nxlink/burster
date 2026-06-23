@@ -250,10 +250,10 @@ def build_plan_attribute_rows(
 ) -> Tuple[List[Dict[str, str]], List[Dict[str, str]]]:
     mt_rate_limit_str = calc_mt_rate_limit(row, perc, main_config)
     ne_ul = str(
-        int(float(row["UL"]) * 1000 * (1 + (float(main_config["boost_perc"]) / 100)))
+        int(float(row["UL"]) * 1_000_000 * (1 + (float(main_config["boost_perc"]) / 100)))
     )
     ne_dl = str(
-        int(float(row["DL"]) * 1000 * (1 + (float(main_config["boost_perc"]) / 100)))
+        int(float(row["DL"]) * 1_000_000 * (1 + (float(main_config["boost_perc"]) / 100)))
     )
     cambium_ul = str(
         int(float(row["UL"]) * 1000 * (1 + (float(main_config["boost_perc"]) / 100)))
